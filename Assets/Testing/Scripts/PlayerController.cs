@@ -26,7 +26,7 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate() {
 
         Move(playerControls.Player.Move.ReadValue<Vector2>());
-
+        
     }
     
     public void Move(Vector2 inputValue){
@@ -39,5 +39,8 @@ public class PlayerController : MonoBehaviour
 
         playerRigidbody.AddForce(Vector3.up * 10f, ForceMode.Impulse);
     }
+    
+    
+    
     
 }
