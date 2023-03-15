@@ -9,7 +9,10 @@ public class PlayerController : MonoBehaviour
 
     private Rigidbody playerRigidbody;
     private PlayerInput playerInput;
-
+    
+    [SerializeField]
+    private GameObject firstPersonCamera;
+    
     private PlayerControls playerControls;
 
     private void Awake() {
@@ -24,15 +27,19 @@ public class PlayerController : MonoBehaviour
     }
     
     private void FixedUpdate() {
-
+        
         Move(playerControls.Player.Move.ReadValue<Vector2>());
         
     }
     
     public void Move(Vector2 inputValue){
         inputValue *= 10f;
-        playerRigidbody.velocity = new Vector3(inputValue.x, playerRigidbody.velocity.y, inputValue.y);
+        gameObject.transform.Rotate(new Vector3(firstPersonCamera.transform.rotation.x, firstPersonCamera.transform.rotation.y, firstPersonCamera.transform.rotation.z));
+        firstPersonCamera.transform.rotation = new Quaternion(0, 0, 0, 0);
+        playerRigidbody.velocity = gameObject.transform.InverseTransformVector(new Vector3(inputValue.x, playerRigidbody.velocity.y, inputValue.y));
     }
+    
+    
     
     public void Jump(InputAction.CallbackContext context){
         if (!context.performed) return;
