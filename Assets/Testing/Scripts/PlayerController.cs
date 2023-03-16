@@ -12,7 +12,10 @@ public class PlayerController : MonoBehaviour
     
     [SerializeField]
     private GameObject firstPersonCamera;
-    
+
+    [SerializeField]
+    private GameObject groundCheck;
+
     private PlayerControls playerControls;
 
     private void Awake() {
@@ -81,16 +84,34 @@ public class PlayerController : MonoBehaviour
     public void RotatePlayerToHead(){
         transform.eulerAngles = new Vector3(0f, transform.eulerAngles.y+firstPersonCamera.transform.localEulerAngles.y, 0f);
         firstPersonCamera.transform.localEulerAngles = new Vector3(firstPersonCamera.transform.localEulerAngles.x, 0f, 0f);
-        Debug.Log(firstPersonCamera.transform.localEulerAngles);
     }
     
     
     
     public void Jump(InputAction.CallbackContext context){
-        if (!context.performed) return;
+        if (!context.performed || !grounded) return;
 
         playerRigidbody.AddForce(Vector3.up * 10f, ForceMode.Impulse);
     }
-    
+
+    private bool grounded = true;
+    private void OnTriggerEnter(Collider other) {
+        
+        if(other.gameObject.layer==6)
+            grounded = true;
+        
+    }
+    private void OnTriggerExit(Collider other) {
+        
+        if(other.gameObject.layer==6)
+            grounded = false;
+        
+    }
+    private void OnTriggerStay(Collider other) {
+        
+        if(other.gameObject.layer==6)
+            grounded = true;
+        
+    }
     
 }
