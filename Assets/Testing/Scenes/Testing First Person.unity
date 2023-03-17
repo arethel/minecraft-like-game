@@ -514,7 +514,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   firstPersonCamera: {fileID: 1887030700}
   groundCheck: {fileID: 548873406}
-  sensitivity: 0.1
+  sensitivity: 0.05
 --- !u!54 &731587588
 Rigidbody:
   m_ObjectHideFlags: 0

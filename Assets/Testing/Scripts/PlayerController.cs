@@ -25,6 +25,7 @@ public class PlayerController : MonoBehaviour
         playerControls = new PlayerControls();
         
         playerControls.Player.Enable();
+        Cursor.lockState = CursorLockMode.Locked;
         playerControls.Player.Jump.performed += Jump;
         
     }
@@ -40,7 +41,7 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    public float sensitivity = 0.1f;
+    public float sensitivity = 0.025f;
 
     float yView = 0;
     public void CameraRotation(){
@@ -62,10 +63,10 @@ public class PlayerController : MonoBehaviour
     public void Move(Vector2 inputValue){
 
         playerRigidbody.angularVelocity = new Vector3(0f, 0f, 0f);
-
+        
         if(inputValue.magnitude>0)
             RotatePlayerToHead();
-
+        
 
         Vector3 currentVelocity = playerRigidbody.velocity;
         Vector3 targetVelocity = new Vector3(inputValue.x, 0f, inputValue.y);
@@ -79,6 +80,13 @@ public class PlayerController : MonoBehaviour
 
 
         playerRigidbody.AddForce(velocityChange, ForceMode.VelocityChange);
+    }
+    
+    private void OnCollisionStay(Collision other) {
+        if(other.gameObject.layer==6&&grounded){
+            Debug.Log(Vector3.Angle(other.GetContact(0).normal,Vector3.up));
+            
+        }
     }
     
     public void RotatePlayerToHead(){
