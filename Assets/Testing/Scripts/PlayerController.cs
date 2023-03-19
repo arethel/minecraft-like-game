@@ -7,19 +7,17 @@ public class PlayerController : MonoBehaviour
 {
     
 
-    private Rigidbody playerRigidbody;
     private PlayerInput playerInput;
     
     [SerializeField]
     private GameObject firstPersonCamera;
 
-    [SerializeField]
-    private GameObject groundCheck;
 
     private PlayerControls playerControls;
-
+    
+    private CharacterController characterController;
+    
     private void Awake() {
-        playerRigidbody = GetComponent<Rigidbody>();
         playerInput = GetComponent<PlayerInput>();
         
         playerControls = new PlayerControls();
@@ -27,13 +25,20 @@ public class PlayerController : MonoBehaviour
         playerControls.Player.Enable();
         Cursor.lockState = CursorLockMode.Locked;
         playerControls.Player.Jump.performed += Jump;
-        
+
+        characterController = GetComponent<CharacterController>();
     }
-    
+
+    private Vector3 moveDiraction = Vector3.zero;
     private void FixedUpdate() {
+        moveDiraction = Vector3.zero;
         
         Move(playerControls.Player.Move.ReadValue<Vector2>());
+        ApplyGravity();
         
+        characterController.Move(moveDiraction);
+
+        TestSphereCast();
     }
     
     private void LateUpdate() {
@@ -58,35 +63,22 @@ public class PlayerController : MonoBehaviour
 
     }
 
-
-    float maxForce = 2;
+    [SerializeField]
+    private float movementSpeed = 4f;
     public void Move(Vector2 inputValue){
-
-        playerRigidbody.angularVelocity = new Vector3(0f, 0f, 0f);
         
         if(inputValue.magnitude>0)
             RotatePlayerToHead();
+
+        moveDiraction += transform.TransformDirection(new Vector3(inputValue.x, 0f, inputValue.y)) * Time.deltaTime * movementSpeed;
         
-
-        Vector3 currentVelocity = playerRigidbody.velocity;
-        Vector3 targetVelocity = new Vector3(inputValue.x, 0f, inputValue.y);
-
-        targetVelocity *= 10f;
-        targetVelocity = transform.TransformDirection(targetVelocity);
-
-        Vector3 velocityChange = targetVelocity-currentVelocity;
-        velocityChange.y = 0;
-        Vector3.ClampMagnitude(velocityChange, maxForce);
-
-
-        playerRigidbody.AddForce(velocityChange, ForceMode.VelocityChange);
     }
     
-    private void OnCollisionStay(Collision other) {
-        if(other.gameObject.layer==6&&grounded){
-            Debug.Log(Vector3.Angle(other.GetContact(0).normal,Vector3.up));
-            
-        }
+    
+    [SerializeField]
+    private float gravity = 10f;
+    private void ApplyGravity(){
+        moveDiraction += Vector3.down * gravity * Time.deltaTime;
     }
     
     public void RotatePlayerToHead(){
@@ -95,31 +87,18 @@ public class PlayerController : MonoBehaviour
     }
     
     
-    
     public void Jump(InputAction.CallbackContext context){
-        if (!context.performed || !grounded) return;
+        if (!context.performed || !characterController.isGrounded) return;
 
-        playerRigidbody.AddForce(Vector3.up * 10f, ForceMode.Impulse);
     }
 
-    private bool grounded = true;
-    private void OnTriggerEnter(Collider other) {
-        
-        if(other.gameObject.layer==6)
-            grounded = true;
-        
+    
+    private void TestSphereCast(){
+        RaycastHit hit;
+        if(Physics.SphereCast(transform.position, 0.5f, Vector3.down, out hit, 2f, 0)){
+            Debug.Log(hit.normal);
+        }
     }
-    private void OnTriggerExit(Collider other) {
-        
-        if(other.gameObject.layer==6)
-            grounded = false;
-        
-    }
-    private void OnTriggerStay(Collider other) {
-        
-        if(other.gameObject.layer==6)
-            grounded = true;
-        
-    }
+    
     
 }
