@@ -469,7 +469,9 @@ MonoBehaviour:
   firstPersonCamera: {fileID: 1887030700}
   sensitivity: 0.05
   movementSpeed: 4
-  gravity: 10
+  gravity: 4
+  jumpForce: 10
+  slidingK: 0.2
 --- !u!143 &731587589
 CharacterController:
   m_ObjectHideFlags: 0
