@@ -16,7 +16,10 @@ public class PlayerController : MonoBehaviour
     private PlayerControls playerControls;
     
     private CharacterController characterController;
-    
+
+
+    private Animator animator;
+
     private void Awake() {
         playerInput = GetComponent<PlayerInput>();
         
@@ -27,25 +30,40 @@ public class PlayerController : MonoBehaviour
         playerControls.Player.Jump.performed += Jump;
 
         characterController = GetComponent<CharacterController>();
+
+        animator = GetComponentInChildren<Animator>();
     }
 
     private Vector3 moveDiraction = Vector3.zero;
+
+
     private void FixedUpdate() {
-        moveDiraction = new Vector3(0f, moveDiraction.y, 0f);
+        //moveDiraction = new Vector3(0f, moveDiraction.y, 0f);
         
         //TestSphereCast();
         Move(playerControls.Player.Move.ReadValue<Vector2>());
         ApplyGravity();
         
         
-        characterController.Move(moveDiraction);
-        
+        characterController.Move(moveDiraction + moveController);
+        ApplyAnimation();
     }
     
     private void LateUpdate() {
         CameraRotation();
     }
-
+    
+    
+    void ApplyAnimation(){
+        Vector3 moveVector = moveDiraction + moveController;
+        Debug.Log(new Vector3(moveVector.x, 0, moveVector.z).magnitude);
+        if(new Vector3(moveVector.x, 0, moveVector.z).magnitude>0.0f){
+            animator.SetBool("IsMoving", true);
+        }
+        else{
+            animator.SetBool("IsMoving", false);
+        }
+    }
 
     public float sensitivity = 0.025f;
 
@@ -66,55 +84,67 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField]
     private float movementSpeed = 4f;
+
+    Vector3 moveController = Vector3.zero;
     public void Move(Vector2 inputValue){
         
         if(inputValue.magnitude>0)
             RotatePlayerToHead();
-
-        moveDiraction += transform.TransformDirection(new Vector3(inputValue.x, 0f, inputValue.y)) * Time.deltaTime * movementSpeed;
+        
+        moveController = transform.TransformDirection(new Vector3(inputValue.x, 0f, inputValue.y)) * Time.deltaTime * movementSpeed;
         
     }
     
     
     [SerializeField]
     private float gravity = 10f;
+
+
     private void ApplyGravity(){
-        
         
         RaycastHit hit;
         if(Physics.SphereCast(transform.position + Vector3.up * 0.5f, 0.5f, Vector3.down, out hit, 0.2f)){
 
             float angle = Vector3.Angle(hit.normal, Vector3.up);
-            
             if(angle<=characterController.slopeLimit){
                 JumpFun();
                 return;
             }
-            
-            
+
+            jump = false;
             float sin = Mathf.Sin(angle*Mathf.PI/180);
             float cos = Mathf.Cos(angle*Mathf.PI/180);
 
-            Vector3 newVector = new Vector3(hit.normal.x, 0f, hit.normal.z).normalized*sin;
+            Vector3 xzAxis = new Vector3(hit.normal.x, 0f, hit.normal.z).normalized;
+
+            float slidingMove = Vector3.Dot(xzAxis,moveController);
+            if(slidingMove<0){
+                moveDiraction = -slidingMove*xzAxis;
+            }
+            /*
             
-            moveDiraction += newVector * Time.deltaTime * gravity * slidingK;
-            moveDiraction += Vector3.down * gravity * Time.deltaTime * cos * slidingK;
-        }
-        else{
-            moveDiraction += Vector3.down * gravity * Time.deltaTime;
+            Vector3 newVector = xzAxis*cos;
+            
+            moveDiraction = newVector * Time.deltaTime * gravity * slidingK;
+            moveDiraction.y = gravity * Time.deltaTime * sin * slidingK;*/
+            
         }
         
+        if(!characterController.isGrounded){
+            moveDiraction.x = 0;
+            moveDiraction.z = 0;
+        }
         
+        moveDiraction += Vector3.down * gravity * Time.deltaTime;
     }
     
     void JumpFun(){
         if(jump){
             jump = false;
             moveDiraction.y = 0f;
-        
             Vector3 jumpVelocity = Vector3.up * jumpForce * Time.deltaTime;
-            
             moveDiraction += jumpVelocity;
+            
         }
     }
     
@@ -126,6 +156,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private float jumpForce=1;
     bool jump = false;
+    
     public void Jump(InputAction.CallbackContext context){
         if (!context.performed || !characterController.isGrounded) return;
         jump=true;
@@ -135,28 +166,6 @@ public class PlayerController : MonoBehaviour
     }
 
 
-
-    [SerializeField]
-    private float slidingK = 0.2f;
-
-    /*private void TestSphereCast(){
-        
-        //if(!characterController.isGrounded) return;
-
-        RaycastHit hit;
-        if(Physics.SphereCast(transform.position + Vector3.up * 0.5f, 0.5f, Vector3.down, out hit, 0.2f)){
-
-            float angle = Vector3.Angle(hit.normal, Vector3.up);
-            if(angle<=characterController.slopeLimit)
-                return;
-
-            float sin = Mathf.Sin(angle*Mathf.PI/180);
-
-            Vector3 newVector = new Vector3(hit.normal.x, 0f, hit.normal.z).normalized*sin;
-            
-            moveDiraction += newVector * Time.deltaTime * gravity * slidingK;
-        }
-    }*/
     
     
 }
