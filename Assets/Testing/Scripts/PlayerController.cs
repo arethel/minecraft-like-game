@@ -33,7 +33,7 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate() {
         moveDiraction = new Vector3(0f, moveDiraction.y, 0f);
         
-        TestSphereCast();
+        //TestSphereCast();
         Move(playerControls.Player.Move.ReadValue<Vector2>());
         ApplyGravity();
         
@@ -79,8 +79,43 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private float gravity = 10f;
     private void ApplyGravity(){
-        moveDiraction += Vector3.down * gravity * Time.deltaTime;
         
+        
+        RaycastHit hit;
+        if(Physics.SphereCast(transform.position + Vector3.up * 0.5f, 0.5f, Vector3.down, out hit, 0.2f)){
+
+            float angle = Vector3.Angle(hit.normal, Vector3.up);
+            
+            if(angle<=characterController.slopeLimit){
+                JumpFun();
+                return;
+            }
+            
+            
+            float sin = Mathf.Sin(angle*Mathf.PI/180);
+            float cos = Mathf.Cos(angle*Mathf.PI/180);
+
+            Vector3 newVector = new Vector3(hit.normal.x, 0f, hit.normal.z).normalized*sin;
+            
+            moveDiraction += newVector * Time.deltaTime * gravity * slidingK;
+            moveDiraction += Vector3.down * gravity * Time.deltaTime * cos * slidingK;
+        }
+        else{
+            moveDiraction += Vector3.down * gravity * Time.deltaTime;
+        }
+        
+        
+    }
+    
+    void JumpFun(){
+        if(jump){
+            jump = false;
+            moveDiraction.y = 0f;
+        
+            Vector3 jumpVelocity = Vector3.up * jumpForce * Time.deltaTime;
+            
+            moveDiraction += jumpVelocity;
+        }
     }
     
     public void RotatePlayerToHead(){
@@ -90,15 +125,12 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField]
     private float jumpForce=1;
-
+    bool jump = false;
     public void Jump(InputAction.CallbackContext context){
         if (!context.performed || !characterController.isGrounded) return;
+        jump=true;
         
-        moveDiraction.y = 0f;
         
-        Vector3 jumpVelocity = Vector3.up * jumpForce * Time.deltaTime;
-        
-        moveDiraction += jumpVelocity;
 
     }
 
@@ -107,7 +139,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private float slidingK = 0.2f;
 
-    private void TestSphereCast(){
+    /*private void TestSphereCast(){
         
         //if(!characterController.isGrounded) return;
 
@@ -124,7 +156,7 @@ public class PlayerController : MonoBehaviour
             
             moveDiraction += newVector * Time.deltaTime * gravity * slidingK;
         }
-    }
+    }*/
     
     
 }
