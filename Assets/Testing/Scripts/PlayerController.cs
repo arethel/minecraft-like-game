@@ -47,21 +47,30 @@ public class PlayerController : MonoBehaviour
         
         characterController.Move(moveDiraction + moveController);
         ApplyAnimation();
+
     }
     
     private void LateUpdate() {
         CameraRotation();
     }
-    
-    
+
+    bool landingTransition = false;
     void ApplyAnimation(){
         Vector3 moveVector = moveDiraction + moveController;
-        Debug.Log(new Vector3(moveVector.x, 0, moveVector.z).magnitude);
+        
         if(new Vector3(moveVector.x, 0, moveVector.z).magnitude>0.0f){
             animator.SetBool("IsMoving", true);
         }
         else{
             animator.SetBool("IsMoving", false);
+        }
+        
+        animator.SetBool("IsGrounded", characterController.isGrounded);
+        if(characterController.isGrounded
+        &&(animator.GetCurrentAnimatorStateInfo(0).IsName("Jump Up")||animator.GetCurrentAnimatorStateInfo(0).IsName("Falling Idle"))
+        &&!landingTransition){
+            animator.CrossFade("Landing", 0.1f);
+            landingTransition = true;
         }
     }
 
@@ -104,8 +113,12 @@ public class PlayerController : MonoBehaviour
         
         RaycastHit hit;
         if(Physics.SphereCast(transform.position + Vector3.up * 0.5f, 0.5f, Vector3.down, out hit, 0.2f)){
-
+            
+            animator.SetBool("IsFalling", false);
             float angle = Vector3.Angle(hit.normal, Vector3.up);
+            
+            moveDiraction.y = -gravity * Time.deltaTime;
+            
             if(angle<=characterController.slopeLimit){
                 JumpFun();
                 return;
@@ -128,6 +141,16 @@ public class PlayerController : MonoBehaviour
             moveDiraction = newVector * Time.deltaTime * gravity * slidingK;
             moveDiraction.y = gravity * Time.deltaTime * sin * slidingK;*/
             
+            
+        }
+        else{
+            if(moveDiraction.y<-0.09){
+                animator.SetBool("IsFalling", true);
+                landingTransition = false;
+            }
+                
+                
+            animator.SetBool("IsJumping", false);
         }
         
         if(!characterController.isGrounded){
@@ -144,7 +167,9 @@ public class PlayerController : MonoBehaviour
             moveDiraction.y = 0f;
             Vector3 jumpVelocity = Vector3.up * jumpForce * Time.deltaTime;
             moveDiraction += jumpVelocity;
-            
+            animator.CrossFade("Jump Up", 0.1f);
+            animator.SetBool("IsJumping", true);
+            landingTransition = false;
         }
     }
     
