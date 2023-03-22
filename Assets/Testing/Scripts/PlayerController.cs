@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Netcode;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
     
 
@@ -27,12 +28,27 @@ public class PlayerController : MonoBehaviour
         
         playerControls.Player.Enable();
         Cursor.lockState = CursorLockMode.Locked;
+        
         playerControls.Player.Jump.performed += Jump;
 
         characterController = GetComponent<CharacterController>();
 
         animator = GetComponentInChildren<Animator>();
+
+        
     }
+
+    public override void OnNetworkSpawn()
+    {
+        AssignCamera();
+    }
+    private void AssignCamera(){
+        if(IsOwner){
+            GameObject followCam = GameObject.FindGameObjectWithTag("FollowCam");
+            followCam.GetComponent<Cinemachine.CinemachineVirtualCamera>().Follow = firstPersonCamera.transform;
+        }
+    }
+    
 
     private Vector3 moveDiraction = Vector3.zero;
 
@@ -41,17 +57,21 @@ public class PlayerController : MonoBehaviour
         //moveDiraction = new Vector3(0f, moveDiraction.y, 0f);
         
         //TestSphereCast();
-        Move(playerControls.Player.Move.ReadValue<Vector2>());
+        if(IsOwner)
+            Move(playerControls.Player.Move.ReadValue<Vector2>());
         ApplyGravity();
         
         
         characterController.Move(moveDiraction + moveController);
-        ApplyAnimation();
+        
+        if(IsOwner)
+            ApplyAnimation();
 
     }
     
     private void LateUpdate() {
-        CameraRotation();
+        if(IsOwner)
+            CameraRotation();
     }
 
     bool landingTransition = false;
@@ -108,16 +128,18 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private float gravity = 10f;
 
-
+    bool wasOnGround = false;
     private void ApplyGravity(){
         
         RaycastHit hit;
         if(Physics.SphereCast(transform.position + Vector3.up * 0.5f, 0.5f, Vector3.down, out hit, 0.2f)){
+            wasOnGround = true;
             
-            animator.SetBool("IsFalling", false);
+            if(IsOwner)
+                animator.SetBool("IsFalling", false);
             float angle = Vector3.Angle(hit.normal, Vector3.up);
             
-            moveDiraction.y = -gravity * Time.deltaTime;
+            //moveDiraction.y = -gravity * Time.deltaTime;
             
             if(angle<=characterController.slopeLimit){
                 JumpFun();
@@ -144,13 +166,21 @@ public class PlayerController : MonoBehaviour
             
         }
         else{
-            if(moveDiraction.y<-0.09){
-                animator.SetBool("IsFalling", true);
-                landingTransition = false;
+            
+            if(wasOnGround){
+                wasOnGround = false;
+                if(moveDiraction.y<0f)
+                    moveDiraction.y = 0f;
             }
+            
+            if(IsOwner)
+                if(moveDiraction.y<-0.09){
+                    animator.SetBool("IsFalling", true);
+                    landingTransition = false;
+                }
                 
-                
-            animator.SetBool("IsJumping", false);
+            if(IsOwner)
+                animator.SetBool("IsJumping", false);
         }
         
         if(!characterController.isGrounded){
@@ -183,7 +213,7 @@ public class PlayerController : MonoBehaviour
     bool jump = false;
     
     public void Jump(InputAction.CallbackContext context){
-        if (!context.performed || !characterController.isGrounded) return;
+        if (!context.performed || !characterController.isGrounded || !IsOwner) return;
         jump=true;
         
         

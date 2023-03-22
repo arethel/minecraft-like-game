@@ -18,19 +18,17 @@ public class Commands : NetworkBehaviour
         
     }
     
-    [SerializeField]
-    private NetworkManager netManager;
     
     [Command]
     private void StartServer(){
-        netManager.StartServer();
+        NetworkManager.Singleton.StartServer();
     }
     [Command]
     private void StartClient(){
-        netManager.StartClient();
+        NetworkManager.Singleton.StartClient();
     }
     [Command]
     private void StartHost(){
-        netManager.StartHost();
+        NetworkManager.Singleton.StartHost();
     }
 }
