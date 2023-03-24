@@ -3,50 +3,49 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
+using QFSW.QC;
 
 public class PlayerController : NetworkBehaviour
 {
     
 
-    private PlayerInput playerInput;
+    
     
     [SerializeField]
     private GameObject firstPersonCamera;
 
 
-    private PlayerControls playerControls;
-    
+
     private CharacterController characterController;
 
 
     private Animator animator;
 
     private void Awake() {
-        playerInput = GetComponent<PlayerInput>();
-        
-        playerControls = new PlayerControls();
-        
-        playerControls.Player.Enable();
-        Cursor.lockState = CursorLockMode.Locked;
-        
-        playerControls.Player.Jump.performed += Jump;
 
         characterController = GetComponent<CharacterController>();
 
         animator = GetComponentInChildren<Animator>();
-
-        
+    }
+    
+    private void AssignPlayerControls(){
+        InputController.Singleton.playerControls.Player.Jump.performed += Jump;
     }
 
     public override void OnNetworkSpawn()
     {
-        AssignCamera();
-    }
-    private void AssignCamera(){
         if(IsOwner){
-            GameObject followCam = GameObject.FindGameObjectWithTag("FollowCam");
-            followCam.GetComponent<Cinemachine.CinemachineVirtualCamera>().Follow = firstPersonCamera.transform;
+            AssignPlayerControls();
+            AssignCamera();
+            InputController.Singleton.SetModeOfInput(InputController.Modes.PLayer);
         }
+            
+    }
+    
+    private void AssignCamera(){
+        GameObject followCam = GameObject.FindGameObjectWithTag("FollowCam");
+        followCam.GetComponent<Cinemachine.CinemachineVirtualCamera>().Follow = firstPersonCamera.transform;
+        
     }
     
 
@@ -54,13 +53,10 @@ public class PlayerController : NetworkBehaviour
 
 
     private void FixedUpdate() {
-        //moveDiraction = new Vector3(0f, moveDiraction.y, 0f);
-        
-        //TestSphereCast();
         if(IsOwner)
-            Move(playerControls.Player.Move.ReadValue<Vector2>());
+            Move(InputController.Singleton.playerControls.Player.Move.ReadValue<Vector2>());
+            
         ApplyGravity();
-        
         
         characterController.Move(moveDiraction + moveController);
         
@@ -99,7 +95,7 @@ public class PlayerController : NetworkBehaviour
     float yView = 0;
     public void CameraRotation(){
 
-        Vector2 lookImput = playerControls.Player.Look.ReadValue<Vector2>();
+        Vector2 lookImput = InputController.Singleton.playerControls.Player.Look.ReadValue<Vector2>();//input group
 
         firstPersonCamera.transform.Rotate(Vector3.up * lookImput.x * sensitivity);
 
@@ -117,13 +113,63 @@ public class PlayerController : NetworkBehaviour
     Vector3 moveController = Vector3.zero;
     public void Move(Vector2 inputValue){
         
-        if(inputValue.magnitude>0)
-            RotatePlayerToHead();
+        if(inputValue.magnitude>0){
+            RotatePlayerToHead(inputValue);
+            moveController = firstPersonCamera.transform.TransformDirection(new Vector3(inputValue.x, 0f, inputValue.y)) * Time.deltaTime * movementSpeed;
+        }
+        else{
+            moveController = Vector3.zero;
+        }
         
-        moveController = transform.TransformDirection(new Vector3(inputValue.x, 0f, inputValue.y)) * Time.deltaTime * movementSpeed;
         
     }
+
+
+    [SerializeField]
+    private float rotateSpeed = 1;
+    [SerializeField]
+    private float minimizerExp = 4;
+    public void RotatePlayerToHead(Vector2 input){
+        float difAngle = firstPersonCamera.transform.eulerAngles.y - transform.eulerAngles.y;
+
+        float changeOfRot = GetDiractionAngle(difAngle) * rotateSpeed * Mathf.Exp(-minimizerExp / Mathf.Abs(difAngle));
+        /*if (Mathf.Abs(difAngle) < 5f)
+        {
+            changeOfRot = 0;
+        }*/
+
+        transform.eulerAngles = new Vector3(0f, transform.eulerAngles.y + changeOfRot, 0f);
+        firstPersonCamera.transform.localEulerAngles = new Vector3(firstPersonCamera.transform.localEulerAngles.x, firstPersonCamera.transform.localEulerAngles.y - changeOfRot, 0f);
+    }
     
+    float GetDiractionAngle(float difAngle)
+    {
+        if(Mathf.Abs(difAngle)>180){
+            if(difAngle>0){
+                return -1;
+            }
+            else{
+                return 1;
+            }
+        }
+        return Mathf.Sign(difAngle);
+    }
+    
+    float GetAngle(Vector2 direction){
+        
+        if(direction.x>0){
+            return 90-Mathf.Atan(direction.y/direction.x)*180/Mathf.PI;
+        }
+        else if(direction.x<0){
+            return 270+Mathf.Atan(-direction.y/direction.x)*180/Mathf.PI;
+        }
+        
+        if(direction.y<0){
+            return 180;
+        }
+        
+        return 0;
+    }
     
     [SerializeField]
     private float gravity = 10f;
@@ -138,8 +184,6 @@ public class PlayerController : NetworkBehaviour
             if(IsOwner)
                 animator.SetBool("IsFalling", false);
             float angle = Vector3.Angle(hit.normal, Vector3.up);
-            
-            //moveDiraction.y = -gravity * Time.deltaTime;
             
             if(angle<=characterController.slopeLimit){
                 JumpFun();
@@ -203,10 +247,7 @@ public class PlayerController : NetworkBehaviour
         }
     }
     
-    public void RotatePlayerToHead(){
-        transform.eulerAngles = new Vector3(0f, transform.eulerAngles.y+firstPersonCamera.transform.localEulerAngles.y, 0f);
-        firstPersonCamera.transform.localEulerAngles = new Vector3(firstPersonCamera.transform.localEulerAngles.x, 0f, 0f);
-    }
+    
 
     [SerializeField]
     private float jumpForce=1;
@@ -215,9 +256,6 @@ public class PlayerController : NetworkBehaviour
     public void Jump(InputAction.CallbackContext context){
         if (!context.performed || !characterController.isGrounded || !IsOwner) return;
         jump=true;
-        
-        
-
     }
 
 
